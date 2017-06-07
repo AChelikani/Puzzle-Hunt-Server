@@ -4,8 +4,12 @@ import os
 from sqlalchemy.orm import sessionmaker
 from tabledef import *
 import solutions
-engine = create_engine('sqlite:///tutorial.db', echo=True)
+import info
+import config
+import slackweb
 
+engine = create_engine('sqlite:///tutorial.db', echo=True)
+slack = slackweb.Slack(url=config.SLACK_HOOK)
 app = Flask(__name__)
 
 @app.route('/live')
@@ -19,7 +23,6 @@ def home():
 def base():
     return render_template('home.html')
 
-
 @app.route('/profile')
 def profile():
     return render_template('profile.html', teamname=session['team'])
@@ -32,6 +35,10 @@ def puzzles():
 def pick_puzzle(puzzlenum):
     # Add error checking for puzzlenum
     return render_template('puzzle' + str(puzzlenum) + '.html')
+
+@app.route('/scoreboard')
+def scoreboard():
+    return render_template('scoreboard.html')
 
 @app.route('/login', methods=['POST'])
 def do_admin_login():
@@ -54,13 +61,17 @@ def do_admin_login():
 def solve():
     puzzle = dict(request.form).keys()[0]
     guess = request.form[puzzle]
+    slack.notify(text=guess + " for " + puzzle + " by " + session['team'], channel="#guesses")
     if (puzzle in solutions.SOLUTIONS and solutions.SOLUTIONS[puzzle] == guess):
+        Session = sessionmaker(bind=engine)
+        s = Session()
+        s.query(User).filter(User.username == session['team']).update(User.puzzles: User.puzzles * info.IDENTIFIERS[puzzle])
+        s.query(User).filter(User.username == session['team']).update(User.score: User.score + 1)
         print "correct"
         return puzzles()
     else:
         print "wrong"
         return pick_puzzle(1)
-        # incorrect guess
 
 @app.route("/logout")
 def logout():

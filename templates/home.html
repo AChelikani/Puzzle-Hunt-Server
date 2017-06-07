@@ -1,2 +1,10 @@
 <center> <h1> LA Area Puzzle Challenge </h1> </center>
 <a href="/live"> Log in </a>
+{% block body %}
+{% if session['logged_in'] %}
+<a href="/puzzles"> Puzzles </a>
+<a href="/scoreboard"> Scoreboard </a>
+{% else %}
+<a href="/register"> Register </a>
+{% endif %}
+{% endblock %}
